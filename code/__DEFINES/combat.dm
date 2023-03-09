@@ -1292,3 +1292,24 @@ GLOBAL_LIST_INIT(main_body_parts, list(
 /// cooldown for being spammed with messages that you shot the gun
 #define GUN_SHOOT_MESSAGE_ANTISPAM_TIME 0.5 SECONDS
 
+//melee defines//
+
+//melee damage ratings
+#define MELEE_DAMAGE_1 20
+#define MELEE_DAMAGE_2 25
+#define MELEE_DAMAGE_3 30
+#define MELEE_DAMAGE_4 35
+#define MELEE_DAMAGE_5 40
+
+//melee attack speed
+#define MELEE_SPEED_1 1.5
+#define MELEE_SPEED_2 1.25
+#define MELEE_SPEED_3 1
+#define MELEE_SPEED_4 0.75
+#define MELEE_SPEED_5 0.5
+
+//melee misc defines
+#define MELEE_TWOHANDED_WIELD_MULT 2
+#define MELEE_THROW_DAMAGE_MULT 1.5
+#define MELEE_WOUND_BONUS 10
+#define MELEE_TURNED_OFF 0.1

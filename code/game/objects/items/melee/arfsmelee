@@ -1,0 +1,391 @@
+/obj/item/melee //Melee weapon template. an attempt to combine one and two handed
+
+	name = "melee template"
+	desc = "should not exist"
+	icon = 'icons/fallout/objects/melee/melee.dmi'
+	lefthand_file = 'icons/fallout/onmob/weapons/melee1h_lefthand.dmi'
+	righthand_file = 'icons/fallout/onmob/weapons/melee1h_righthand.dmi'
+	hitsound = 'sound/weapons/bladeslice.ogg'
+	wielded_icon = null
+	slot_flags = ITEM_SLOT_BELT
+	w_class = WEIGHT_CLASS_NORMAL
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_3
+	force_unwielded = MELEE_DAMAGE_3
+	force_wielded = MELEE_DAMAGE_3
+	throwforce = MELEE_DAMAGE_3
+	var/range_wielded = 1 //needs integrated into wield code...
+	wound_bonus = null //it's either 0 or MELEE_WOUND_BONUS
+	bare_wound_bonus = null
+	var/demolish = FALSE //bonus structure damage
+	sharpness = SHARP_EDGED
+	attack_verb = list("attacked", "slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
+	max_integrity = 200
+	armor = ARMOR_VALUE_GENERIC_ITEM
+	resistance_flags = FIRE_PROOF
+	total_mass = TOTAL_MASS_MEDIEVAL_WEAPON
+	flags_1 = CONDUCT_1
+	var/icon_prefix = null
+
+//wielding code
+/obj/item/melee/Initialize()
+	. = ..()
+	RegisterSignal(src, COMSIG_TWOHANDED_WIELD, .proc/on_wield) //doublecheck that these run neatly
+	RegisterSignal(src, COMSIG_TWOHANDED_UNWIELD, .proc/on_unwield)
+	force_unwielded = force
+
+/obj/item/melee/proc/on_wield(obj/item/source, mob/user)
+	wielded = TRUE
+
+/obj/item/melee/proc/on_unwield(obj/item/source, mob/user)
+	wielded = FALSE
+
+/obj/item/melee/update_icon_state()
+	icon_state = "[icon_prefix]"
+
+//structure damage code
+/obj/item/melee/afterattack(atom/A, mob/living/user, proximity)
+	. = ..()
+	if(!proximity || !demolish || IS_STAMCRIT(user)) //does !demolish work to check if the var is true/false?
+		return
+	if(istype(A, /obj/structure/window)) //destroys windows and grilles in one hit (or more if it has a ton of health like plasmaglass)
+		var/obj/structure/window/W = A
+		W.take_damage(force*4, BRUTE, "melee", 0, attacked_by = user) //do I need to do anything more to check the weapon's force?
+	else if(istype(A, /obj/structure/grille))
+		var/obj/structure/grille/G = A
+		G.take_damage(force, BRUTE, "melee", 0, attacked_by = user)
+	else if(istype(A, /obj/machinery/door))
+		var/obj/machinery/door/D = A
+		D.take_damage(force*0.5, BRUTE, "melee", 0, attacked_by = user)
+	else if(istype(A, /obj/structure/simple_door))
+		var/obj/structure/simple_door/M = A
+		M.take_damage(force*0.5, BRUTE, "melee", 0, attacked_by = user)
+
+/*holding attack builds damage bonus, constant stamina drain, slowdown while charging*/
+/obj/item/melee/power_attack
+
+
+/*holding attack prepares wide swing, drain stamina on release*/
+/obj/item/melee/cleave
+
+//simple machete, 0 damage, 0 speed, 0 size
+/obj/item/melee/cleave/machete
+	name = "simple machete"
+	desc = "A makeshift machete made of a lawn mower blade."
+	icon_state = "machete_imp"
+	item_state = "salvagedmachete"
+	slot_flags = ITEM_SLOT_BELT
+	w_class = WEIGHT_CLASS_NORMAL
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_3
+	force_unwielded = MELEE_DAMAGE_3
+	force_wielded = MELEE_DAMAGE_3
+	throwforce = MELEE_DAMAGE_3
+	wound_bonus = null //it's either 0 or MELEE_WOUND_BONUS
+	bare_wound_bonus = null
+
+//machete, +1 damage, 0 speed, 0 size, +1 wounding
+/obj/item/melee/cleave/machete/forgedmachete
+	name = "machete"
+	desc = "A forged machete made of high quality steel."
+	force = MELEE_DAMAGE_4
+	force_unwielded = MELEE_DAMAGE_4
+	force_wielded = MELEE_DAMAGE_4
+	throwforce = MELEE_DAMAGE_4
+	wound_bonus = MELEE_WOUND_BONUS
+	bare_wound_bonus = MELEE_WOUND_BONUS
+
+//for whackin in people
+/obj/item/melee/cleave/machete/training
+	name = "training machete"
+	desc = "A training machete made of tough wood."
+	icon_state = "machete_training"
+	force = 1
+	throwforce = 5
+	wound_bonus = -20
+	sharpness = 0
+
+/*holding attack auto-attacks anyone who enters proximity, constant stamina drain, slowdown*/
+/obj/item/melee/spearwall
+
+//throwing spear, +o damage, +0 speed, +0 size, +throwing/imbed
+/obj/item/melee/spearwall/throwing_spear
+	name = "throwing spear"
+	desc = "An heavy hefty ancient weapon used to this day, due to its ease of lodging itself into its victim's body parts."
+	lefthand_file = 'icons/mob/inhands/items_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/items_righthand.dmi'
+	icon_state = "throw_spear"
+	item_state = "tribalspear"
+	slot_flags = ITEM_SLOT_BELT
+	w_class = WEIGHT_CLASS_NORMAL
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_3
+	force_unwielded = MELEE_DAMAGE_3
+	force_wielded = MELEE_DAMAGE_3
+	throwforce = MELEE_DAMAGE_3 * MELEE_THROW_DAMAGE_MULT //45 damage, kills trash mobs
+	embedding = list("pain_mult" = 2, "embed_chance" = 40, "fall_chance" = 15)
+
+
+/*holding attack blocks incoming melee and returns half damage attack when hit. constant stamina drain, plus stamina drain on trigger*/
+/obj/item/melee/parry
+
+//spatha, +2 damage, 0 speed, 0 size, +1 wounding
+/obj/item/melee/parry/spatha
+	name = "spatha"
+	desc = "A long blade favoured by those who travel light, a finely crafted weapon with good steel and hilt made from bronze and bone."
+	icon_state = "spatha"
+	item_state = "spatha"
+	slot_flags = ITEM_SLOT_BELT
+	w_class = WEIGHT_CLASS_NORMAL
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_5
+	force_unwielded = MELEE_DAMAGE_5
+	force_wielded = MELEE_DAMAGE_5
+	throwforce = MELEE_DAMAGE_5
+	wound_bonus = MELEE_WOUND_BONUS
+	bare_wound_bonus = MELEE_WOUND_BONUS
+
+//claymore, +2 damage, 0 speed, 0 size, +1 wounding
+/obj/item/melee/parry/spatha/longblade
+	name = "forged claymore"
+	desc = "A long one-handed blade sporting lovingly applied wraps and a wonderfully forged and engraved guard. The blade looks to be carefully sharpened."
+	icon_state = "longblade"
+	item_state = "longblade"
+
+//scrap sabre, +1 damage, 0 speed, 0 size
+/obj/item/melee/parry/scrapsabre
+	name = "scrap sabre"
+	desc = "Made from materials found in the wastes, a skilled blacksmith has turned it into a thing of deadly beauty."
+	icon_state = "scrapsabre"
+	item_state = "scrapsabre"
+	slot_flags = ITEM_SLOT_BELT
+	w_class = WEIGHT_CLASS_NORMAL
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_4
+	force_unwielded = MELEE_DAMAGE_4
+	force_wielded = MELEE_DAMAGE_4
+	throwforce = MELEE_DAMAGE_4
+
+//edgy weeb katana, +2 damage, 0 speed, -1 size
+/obj/item/melee/parry/dragonfire
+	name = "Dragonfire Katana"
+	desc = "A sword that crackles with an unknown power source. It's warm in your hands, cutting and cauterizing flesh like butter- and yet, the geiger counter remains silent. The blade seems to guide you to block, twist, and dodge.. <br> <span class='phobia'>The sky above the clouds, a rainbow that fate has devoured- I gave up hope!</span>"
+	icon_state = "temporalkatana"
+	item_state = "temporalkatana"
+	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/weapons/swords_righthand.dmi'
+	slot_flags = ITEM_SLOT_BACK
+	w_class = WEIGHT_CLASS_BULKY
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_5
+	force_unwielded = MELEE_DAMAGE_5
+	force_wielded = MELEE_DAMAGE_5
+	throwforce = MELEE_DAMAGE_5
+
+//shishkebab backpack, +2 damage, 0 speed, -2 size
+/obj/item/melee/parry/shishkebab
+	name = "shishkebab"
+	desc = "A deadly flaming sword covered in fuel. You're not sure this is entirely safe."
+	icon = 'icons/obj/items_and_weapons.dmi'
+	icon_state = "shishkebab"
+	item_state = "shishkebab"
+	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/weapons/swords_righthand.dmi'
+	w_class = WEIGHT_CLASS_BULKY
+	item_flags = ABSTRACT  // don't put in storage
+	slot_flags = 0
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_3
+	force = MELEE_DAMAGE_5
+	force_unwielded = MELEE_DAMAGE_5
+	force_wielded = MELEE_DAMAGE_5
+	throwforce = MELEE_DAMAGE_5
+	sharpness = SHARP_EDGED
+	damtype = "fire"
+	tool_behaviour = TOOL_WELDER
+	toolspeed = 0.3
+
+/obj/item/weapon/melee/parry/shishkebab/Initialize()
+	. = ..()
+	tank = loc
+	if(!istype(tank))
+		return INITIALIZE_HINT_QDEL
+
+/obj/item/weapon/melee/parry/shishkebab/attack_self()
+	return
+
+/obj/item/weapon/melee/parry/shishkebab/doMove(atom/destination)
+	if(destination && (destination != tank.loc || !ismob(destination)))
+		if (loc != tank)
+			to_chat(tank.loc, span_notice("The shishkebab slides back into the backpack tank."))
+		destination = tank
+	..()
+
+/obj/item/shishkebabpack
+	name = "shishkebab backpack"
+	desc = "A backpack containing a large quantity of fuel and a pipe attaching it to a long, deadly blade. You ever wanted to set fire to people with a sword?"
+	icon = 'icons/obj/items_and_weapons.dmi'
+	icon_state = "shishkebabpack"
+	item_state = "shishkebabpack"
+	w_class = WEIGHT_CLASS_BULKY
+	slot_flags = ITEM_SLOT_BACK
+//	actions_types = list(/datum/action/item_action/toggle_shishkebab)
+	armor = ARMOR_VALUE_GENERIC_ITEM
+	resistance_flags = FIRE_PROOF
+	var/obj/item/sword
+
+/obj/item/shishkebabpack/Initialize()
+	. = ..()
+	sword = make_sword()
+
+/obj/item/shishkebabpack/ui_action_click(mob/user)
+	toggle_shishkebab(user)
+
+/obj/item/shishkebabpack/item_action_slot_check(slot, mob/user)
+	if(slot == user.getBackSlot())
+		return 1
+
+/obj/item/shishkebabpack/proc/toggle_shishkebab(mob/living/user)
+	if(!istype(user))
+		return
+	if(user.get_item_by_slot(user.getBackSlot()) != src)
+		to_chat(user, span_warning("The backpack must be worn properly to use!"))
+		return
+	if(user.incapacitated())
+		return
+
+	if(QDELETED(sword))
+		sword = make_sword()
+	if(sword in src)
+		//Detach the sword into the user's hands
+		if(!user.put_in_hands(sword))
+			to_chat(user, span_warning("You need a free hand to hold the shishkebab!"))
+			return
+	else
+		//Remove from their hands and put back "into" the tank
+		remove_sword()
+
+/obj/item/shishkebabpack/verb/toggle_shishkebab_verb()
+	set name = "Toggle Shishkebab"
+	set category = "Object"
+	toggle_shishkebab(usr)
+
+/obj/item/shishkebabpack/proc/make_sword()
+	return new /obj/item/weapon/melee/parry/shishkebab(src)
+
+/obj/item/shishkebabpack/equipped(mob/user, slot)
+	..()
+	if(slot != SLOT_BACK)
+		remove_sword()
+
+/obj/item/shishkebabpack/proc/remove_sword()
+	if(ismob(sword.loc))
+		var/mob/M = sword.loc
+		M.temporarilyRemoveItemFromInventory(sword, TRUE)
+	sword.forceMove(src)
+
+/obj/item/shishkebabpack/Destroy()
+	QDEL_NULL(sword)
+	return ..()
+
+/obj/item/shishkebabpack/attack_hand(mob/user)
+	if (user.get_item_by_slot(user.getBackSlot()) == src)
+		toggle_shishkebab(user)
+	else
+		return ..()
+
+/obj/item/shishkebabpack/MouseDrop(obj/over_object)
+	var/mob/M = loc
+	if(istype(M) && istype(over_object, /obj/screen/inventory/hand))
+		var/obj/screen/inventory/hand/H = over_object
+		M.putItemFromInventoryInHandIfPossible(src, H.held_index)
+	return ..()
+
+/obj/item/shishkebabpack/attackby(obj/item/W, mob/user, params)
+	if(W == sword)
+		remove_sword()
+		return 1
+	else
+		return ..()
+
+/obj/item/shishkebabpack/dropped(mob/user)
+	..()
+	remove_sword()
+
+
+/*holding attack triggers full auto melee swings, double attack speed, half damage, stamina drain per attack*/
+/obj/item/melee/quick_attack
+
+//standard ripper, +1 speed, 0 size, +1 wounding
+/obj/item/melee/quick_attack/ripper
+	name = "ripper"
+	desc = "The Ripper™ vibroblade is powered by a small energy cell wich allows it to easily cut through flesh and bone."
+	icon = 'icons/fallout/objects/melee/melee.dmi'
+	icon_state = "ripper"
+	lefthand_file = 'icons/fallout/onmob/weapons/melee1h_lefthand.dmi'
+	righthand_file = 'icons/fallout/onmob/weapons/melee1h_righthand.dmi'
+	w_class = WEIGHT_CLASS_NORMAL
+	slot_flags = ITEM_SLOT_BELT
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_4
+	force = MELEE_DAMAGE_1
+	force_unwielded = MELEE_DAMAGE_1
+	force_wielded = MELEE_DAMAGE_1
+	throwforce = MELEE_DAMAGE_1
+	wound_bonus = MELEE_WOUND_BONUS
+	bare_wound_bonus = MELEE_WOUND_BONUS
+	sharpness = SHARP_EDGED
+	tool_behaviour = TOOL_SAW
+	toolspeed = 1.5
+	attack_verb = list("attacked", "slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
+	var/on_item_state = "ripper_on"
+	var/off_item_state = "ripper"
+	var/weight_class_on = WEIGHT_CLASS_HUGE
+	var/force_on = MELEE_DAMAGE_1
+	var/force_off = MELEE_DAMAGE_1 * MELEE_TURNED_OFF
+	var/on = FALSE
+	var/on_icon_state = "ripper_on"
+	var/off_icon_state = "ripper"
+	var/on_sound = 'sound/weapons/chainsawhit.ogg'
+	var/description_on = "<span class ='warning'>You thumb the on button, the whining, blurry edge of the Ripper now lethal to touch.</span>"
+	var/description_off = "<span class ='notice'>You turn off the Ripper, the buzz of the cutting teeth ceasing.</span>"
+
+/obj/item/melee/quick_attack/ripper/attack_self(mob/user)
+	on = !on
+	to_chat(user, description_on)
+	if(on)
+		to_chat(user, description_on)
+		icon_state = on_icon_state
+		item_state = on_item_state
+		w_class = weight_class_on
+		force = force_on
+		slot_flags = null
+		attack_verb = list("sawed", "torn", "cut", "chopped", "diced")
+		playsound(loc, on_sound, 50, TRUE)
+	else
+		to_chat(user, description_off)
+		icon_state = off_icon_state
+		item_state = off_item_state
+		w_class = WEIGHT_CLASS_NORMAL
+		force = force_off
+		slot_flags = ITEM_SLOT_BELT
+		attack_verb = list("poked", "scraped")
+	add_fingerprint(user)
+
+//advanced ripper, +2 speed, 0 size, +1 wounding
+/obj/item/melee/quick_attack/ripper/prewar
+	name = "pre-war military ripper"
+	desc = "A hand-held, militarized chainsaw, popular with Army units requiring a compact engineering tool for cutting. Just what material is intended to be cut with the weapon remains open to debate."
+	icon_state = "prewarrip_off"
+	on_icon_state = "prewarrip_on"
+	off_icon_state = "prewarrip_off"
+	on_item_state = "prewarrip_on"
+	off_item_state = "prewarrip_off"
+	attack_speed = CLICK_CD_MELEE * MELEE_SPEED_5
+
+
+
+/*holding attack triggers 50% block chance, constant stamina drain, slowdown*/
+/obj/item/melee/block
+
+
+/*holding attack prepares knockback, knockback distance based on charge time, constant stamina drain*/
+/obj/item/melee/knockback
